@@ -1692,26 +1692,33 @@ void
 tagmon(const Arg *arg)
 {
 	Monitor *m = dirtomon(arg->i);
-	Client *c, *c2;
+	Client *c, **last, **slast;
 	unsigned int tags = selmon->tagset[selmon->seltags];
+
 	while (tags) {
 		tag_monitors[ffs(tags) - 1] = m->num;
 		tags &= tags - 1;
 	}
 
-	m->seltags ^= 1;
-	m->tagset[m->seltags] = selmon->tagset[selmon->seltags];
+	for (last = &m->clients; *last;  last = &(* last)->next);
+	for (slast = &m->stack; *slast; slast = &(*slast)->snext);
+	for (c = selmon->clients; c; c = c->next) {
+		if (!ISVISIBLE(c)) continue;
 
-	for (c = selmon->clients; c; c = c2) {
-		c2 = c->next; // c->next gets overriden in attach()
-		if (!(c->tags & m->tagset[m->seltags])) continue;
-		detach(c);
+		detach(c); // O(n^2) for no reason, TODO
 		detachstack(c);
 		c->mon = m;
-		attach(c);
-		attachstack(c);
-	}
 
+		*last = c;
+		*slast = c;
+		last = &c->next;
+		slast = &c->snext;
+	}
+	*last = NULL;
+	*slast = NULL;
+
+	m->seltags ^= 1;
+	m->tagset[m->seltags] = selmon->tagset[selmon->seltags];
 	selmon->tagset[selmon->seltags] = 0;
 	selmon->seltags ^= 1;
 	m->nmaster = selmon->nmaster;
@@ -1719,10 +1726,8 @@ tagmon(const Arg *arg)
 	memcpy(m->lt, selmon->lt, sizeof(m->lt));
 
 	unfocus(selmon->sel, 0);
-
 	arrange(selmon);
 	selmon = m;
-
 	focus(NULL);
 	arrange(m);
 }
