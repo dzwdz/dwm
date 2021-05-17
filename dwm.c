@@ -208,6 +208,7 @@ static void showhide(Client *c);
 static void sigchld(int unused);
 static void spawn(const Arg *arg);
 static void tag(const Arg *arg);
+static Monitor *tagtomon(unsigned int mask);
 static void tagmon(const Arg *arg);
 static void tile(Monitor *);
 static void togglebar(const Arg *arg);
@@ -300,6 +301,7 @@ applyrules(Client *c)
 		{
 			c->isfloating = r->isfloating;
 			c->tags |= r->tags;
+			c->mon = tagtomon(r->tags);
 			for (m = mons; m && m->num != r->monitor; m = m->next);
 			if (m)
 				c->mon = m;
@@ -716,6 +718,7 @@ drawbar(Monitor *m)
 	}
 	x = 0;
 	for (i = 0; i < LENGTH(tags); i++) {
+		if (tag_monitors[i] != m->num) continue;
 		w = TEXTW(tags[i]);
 		drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeSel : SchemeNorm]);
 		drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
@@ -1656,19 +1659,72 @@ spawn(const Arg *arg)
 void
 tag(const Arg *arg)
 {
+	Monitor *targetmon;
+	Client *targetcl;
+
 	if (selmon->sel && arg->ui & TAGMASK) {
-		selmon->sel->tags = arg->ui & TAGMASK;
-		focus(NULL);
-		arrange(selmon);
+		targetmon = tagtomon(arg->ui);
+		if (arg->ui != ~0 && targetmon != selmon) {
+			targetcl = selmon->sel;
+			sendmon(selmon->sel, targetmon);
+			targetcl->tags = arg->ui & TAGMASK;
+			arrange(targetmon);
+		} else {
+			selmon->sel->tags = arg->ui & TAGMASK;
+			focus(NULL);
+			arrange(selmon);
+		}
 	}
+}
+
+Monitor *
+tagtomon(unsigned int mask)
+{
+	Monitor *m;
+	int target = tag_monitors[ffs(mask) - 1];
+	for (m = mons; m; m = m->next) {
+		if (m->num == target) return m;
+	}
+	return mons; // fallbacks to the first monitor
 }
 
 void
 tagmon(const Arg *arg)
 {
-	if (!selmon->sel || !mons->next)
-		return;
-	sendmon(selmon->sel, dirtomon(arg->i));
+	Monitor *m = dirtomon(arg->i);
+	Client *c, *c2;
+	unsigned int tags = selmon->tagset[selmon->seltags];
+	while (tags) {
+		tag_monitors[ffs(tags) - 1] = m->num;
+		tags &= tags - 1;
+	}
+
+	m->seltags ^= 1;
+	m->tagset[m->seltags] = selmon->tagset[selmon->seltags];
+
+	for (c = selmon->clients; c; c = c2) {
+		c2 = c->next; // c->next gets overriden in attach()
+		if (!(c->tags & m->tagset[m->seltags])) continue;
+		detach(c);
+		detachstack(c);
+		c->mon = m;
+		attach(c);
+		attachstack(c);
+	}
+
+	selmon->tagset[selmon->seltags] = 0;
+	selmon->seltags ^= 1;
+	m->nmaster = selmon->nmaster;
+	m->sel     = selmon->sel;
+	memcpy(m->lt, selmon->lt, sizeof(m->lt));
+
+	unfocus(selmon->sel, 0);
+
+	arrange(selmon);
+	selmon = m;
+
+	focus(NULL);
+	arrange(m);
 }
 
 void
@@ -1742,11 +1798,14 @@ toggleview(const Arg *arg)
 {
 	unsigned int newtagset = selmon->tagset[selmon->seltags] ^ (arg->ui & TAGMASK);
 
+	unfocus(selmon->sel, 0);
+	selmon = tagtomon(arg->ui);
+
 	if (newtagset) {
 		selmon->tagset[selmon->seltags] = newtagset;
-		focus(NULL);
 		arrange(selmon);
 	}
+	focus(NULL);
 }
 
 void
@@ -2038,11 +2097,14 @@ updatewmhints(Client *c)
 void
 view(const Arg *arg)
 {
-	if ((arg->ui & TAGMASK) == selmon->tagset[selmon->seltags])
-		return;
-	selmon->seltags ^= 1; /* toggle sel tagset */
-	if (arg->ui & TAGMASK)
-		selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
+	unfocus(selmon->sel, 0);
+	selmon = tagtomon(arg->ui);
+
+	if ((arg->ui & TAGMASK) != selmon->tagset[selmon->seltags]) {
+		selmon->seltags ^= 1; /* toggle sel tagset */
+		if (arg->ui & TAGMASK)
+			selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
+	}
 	focus(NULL);
 	arrange(selmon);
 }
