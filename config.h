@@ -37,8 +37,8 @@ static const Rule rules[] = {
 	 */
 	/* class         instance    title       tags mask     isfloating   monitor (ignored) */
 	{ "Pavucontrol", NULL,       NULL,       0,            1,           -1 },
-	{  NULL,        "term8",     NULL,       1 << 7,       0,           -1 },
-	{  NULL,        "term9",     NULL,       1 << 8,       0,           -1 },
+	{  NULL,        "emacs",     NULL,       1 << 7,       0,           -1 },
+	{ "term9",       NULL,       NULL,       1 << 8,       0,           -1 },
 };
 
 /* layout(s) */
@@ -68,7 +68,7 @@ static const Layout layouts[] = {
 /* commands */
 static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
 static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, NULL };
-static const char *termcmd[]  = { "urxvt", "-e", "tmux", "new-session", "-A", "-s", "main", NULL };
+static const char *termcmd[]  = { "st", "tmux", "new-session", "-A", "-s", "main", NULL };
 
 /*
  * Xresources preferences to load at startup
@@ -79,7 +79,7 @@ ResourcePref resources[] = {
 		{ "background",         STRING,  &normbordercolor },
 		{ "foreground",         STRING,  &normfgcolor },
 		{ "background",         STRING,  &selbgcolor },
-		{ "color8",             STRING,  &selbordercolor },
+		{ "color0",             STRING,  &selbordercolor },
 		{ "color1",             STRING,  &selfgcolor },
 };
 
