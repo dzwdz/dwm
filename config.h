@@ -28,7 +28,7 @@ static const char *const autostart[] = {
 
 /* tagging */
 static const char *tags[] = { "q", "w", "e", "r", "t", "y", "u", "i", "o" };
-static int tag_monitors[] = {  0,   0,   0,   0,   0,   1,   1,   1,   1  };
+static int tag_monitors[] = {  0,   0,   0,   0,   0,   0,   0,   0,   0  };
 
 static const Rule rules[] = {
 	/* xprop(1):
