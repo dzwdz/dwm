@@ -37,6 +37,7 @@ static const Rule rules[] = {
 	 */
 	/* class         instance    title       tags mask     isfloating   monitor (ignored) */
 	{ "Pavucontrol", NULL,       NULL,       0,            1,           -1 },
+	{  NULL,         NULL,       "QEMU",     0,            1,           -1 },
 	{  NULL,         NULL,      "Org Roam",  1 << 7,       0,           -1 },
 	{ "term9",       NULL,       NULL,       1 << 8,       0,           -1 },
 };
